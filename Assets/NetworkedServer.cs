@@ -22,6 +22,7 @@ public class NetworkedServer : MonoBehaviour
     int playerWaitinginQueueID = -1;
 
     LinkedList<GameRoom> gameRooms;
+    GameRoom gr;
 
     // Start is called before the first frame update
     void Start()
@@ -32,6 +33,7 @@ public class NetworkedServer : MonoBehaviour
         unreliableChannelID = config.AddChannel(QosType.Unreliable);
         HostTopology topology = new HostTopology(config, maxConnections);
         hostID = NetworkTransport.AddHost(topology, socketPort, null);
+        config.DisconnectTimeout = 3000;
 
         playerAccounts = new LinkedList<PlayerAccount>();
 
@@ -40,6 +42,7 @@ public class NetworkedServer : MonoBehaviour
         LoadPlayerAccount();
 
         gameRooms = new LinkedList<GameRoom>();
+
     }
 
     // Update is called once per frame
@@ -68,6 +71,11 @@ public class NetworkedServer : MonoBehaviour
                 ProcessRecievedMsg(msg, recConnectionID);
                 break;
             case NetworkEventType.DisconnectEvent:
+                if(playerWaitinginQueueID != -1 && playerWaitinginQueueID == recConnectionID)
+                {
+                    playerWaitinginQueueID = -1;
+                    Debug.Log(playerWaitinginQueueID);
+                }
                 Debug.Log("Disconnection, " + recConnectionID);
                 break;
         }
@@ -90,7 +98,6 @@ public class NetworkedServer : MonoBehaviour
         int signifier = int.Parse(csv[0]);
 
         bool errorFound = false;
-        GameRoom gr;
         switch (signifier)
         {
             case ClientToServerSignifiers.CreateAccount:
@@ -138,20 +145,19 @@ public class NetworkedServer : MonoBehaviour
                 {
                     gr = new GameRoom(playerWaitinginQueueID, id);
                     gameRooms.AddLast(gr);
-                    SendMessageToClient(ServertoClientSignifiers.GameStart + "", gr.player1ID);
-                    SendMessageToClient(ServertoClientSignifiers.GameStart + "", gr.player2ID);
+                    SendMessageToClient(ServertoClientSignifiers.GameStart + "," + gr.player1ID + "," + gr.player2ID + "," + gr.startingPlayer, gr.player1ID);
+                    SendMessageToClient(ServertoClientSignifiers.GameStart + "," + gr.player2ID + "," + gr.player1ID + "," + gr.startingPlayer, gr.player2ID);
                     playerWaitinginQueueID = -1;
                 }
                 break;
             case ClientToServerSignifiers.GameButtonPressed:
                 gr = GetGameRoomWithClientID(id);
 
+                string slot = csv[1];
                 if(gr != null)
                 {
-                    if (gr.player1ID == id)
-                        SendMessageToClient(ServertoClientSignifiers.OpponenetPlay + "", gr.player2ID);
-                    else
-                        SendMessageToClient(ServertoClientSignifiers.OpponenetPlay + "", gr.player1ID);
+                        SendMessageToClient(ServertoClientSignifiers.OpponentPlay + "," + slot + "," + csv[2], gr.player2ID);
+                        SendMessageToClient(ServertoClientSignifiers.OpponentPlay + "," + slot + "," + csv[2], gr.player1ID);
                 }
                 break;
         }
@@ -209,9 +215,6 @@ public class NetworkedServer : MonoBehaviour
 
 }
 
-
-
-
 public class PlayerAccount
 {
     public string name, password;
@@ -225,11 +228,14 @@ public class PlayerAccount
 public class GameRoom
 {
     public int player1ID, player2ID;
+    int[] observerIDs;
+    public int startingPlayer;
 
     public GameRoom(int Player1ID, int Player2ID)
     {
         player1ID = Player1ID;
         player2ID = Player2ID;
+        startingPlayer = Random.Range(1, 3);
     }
 
 }
@@ -255,7 +261,7 @@ public static class ServertoClientSignifiers
 
     public const int AccountCreationFailed = 4;
 
-    public const int OpponenetPlay = 5;
+    public const int OpponentPlay = 5;
 
     public const int GameStart = 6;
 }
