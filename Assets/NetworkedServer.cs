@@ -158,6 +158,47 @@ public class NetworkedServer : MonoBehaviour
                 {
                         SendMessageToClient(ServertoClientSignifiers.OpponentPlay + "," + slot + "," + csv[2], gr.player2ID);
                         SendMessageToClient(ServertoClientSignifiers.OpponentPlay + "," + slot + "," + csv[2], gr.player1ID);
+                    foreach(int observer in gr.observerIDs)
+                    {
+                        SendMessageToClient(ServertoClientSignifiers.OpponentPlay + "," + slot + "," + csv[2], observer);
+                    }    
+                }
+                break;
+            case ClientToServerSignifiers.PrefixedChatMessageSent:
+                SendMessageToClient(ServertoClientSignifiers.SendChatMessage + "", gr.player1ID);
+                SendMessageToClient(ServertoClientSignifiers.SendChatMessage + "", gr.player2ID);
+                foreach (int observer in gr.observerIDs)
+                {
+                    SendMessageToClient(ServertoClientSignifiers.SendChatMessage + "", observer);
+                }
+                break;
+            case ClientToServerSignifiers.ChatMessageSent:
+                SendMessageToClient(ServertoClientSignifiers.SendChatMessage + "", gr.player1ID);
+                SendMessageToClient(ServertoClientSignifiers.SendChatMessage + "", gr.player2ID);
+                foreach (int observer in gr.observerIDs)
+                {
+                    SendMessageToClient(ServertoClientSignifiers.SendChatMessage + "", observer);
+                }
+                break;
+            case ClientToServerSignifiers.JoinAsObserver:
+                if (gameRooms.First.Value != null)
+                {
+                    gr = gameRooms.First.Value;
+                    gr.observerIDs.Add(id);
+                    SendMessageToClient(ServertoClientSignifiers.GameStart + "," + gr.player1ID + "," + gr.player2ID + "," + gr.startingPlayer, id);
+                }
+                break;
+            case ClientToServerSignifiers.LeaveRoom:
+                gr = GetGameRoomWithClientID(id);
+                gr.RemovePlayer(id);
+
+                if(gr.player1ID == 0 && gr.player2ID == 0)
+                {
+                    foreach(int obs in gr.observerIDs)
+                    {
+                        SendMessageToClient(ServertoClientSignifiers.BackToMainMenu + "", obs);
+                    }
+                    gameRooms.Remove(gr);
                 }
                 break;
         }
@@ -228,7 +269,7 @@ public class PlayerAccount
 public class GameRoom
 {
     public int player1ID, player2ID;
-    int[] observerIDs;
+    public List<int> observerIDs;
     public int startingPlayer;
 
     public GameRoom(int Player1ID, int Player2ID)
@@ -238,6 +279,17 @@ public class GameRoom
         startingPlayer = Random.Range(1, 3);
     }
 
+    public void RemovePlayer(int removedplayerID)
+    {
+        if (removedplayerID == player1ID)
+            player1ID = 0;
+        else if (removedplayerID == player2ID)
+            player2ID = 0;
+        else
+        {
+            observerIDs.Remove(removedplayerID);
+        }
+    }
 }
 
 public static class ClientToServerSignifiers
@@ -249,6 +301,14 @@ public static class ClientToServerSignifiers
     public const int JoinQueue = 3;
 
     public const int GameButtonPressed = 4;
+
+    public const int PrefixedChatMessageSent = 5;
+
+    public const int ChatMessageSent = 6;
+
+    public const int JoinAsObserver = 7;
+
+    public const int LeaveRoom = 8;
 }
 
 public static class ServertoClientSignifiers
@@ -264,4 +324,8 @@ public static class ServertoClientSignifiers
     public const int OpponentPlay = 5;
 
     public const int GameStart = 6;
+
+    public const int SendChatMessage = 7;
+
+    public const int BackToMainMenu = 8;
 }
