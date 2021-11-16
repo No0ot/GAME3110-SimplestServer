@@ -78,6 +78,14 @@ public class NetworkedServer : MonoBehaviour
                     playerWaitinginQueueID = -1;
                     Debug.Log(playerWaitinginQueueID);
                 }
+                foreach(PlayerAccount pa in loggedInPlayerAccounts)
+                {
+                    if (pa.connectionID == recConnectionID)
+                    {
+                        loggedInPlayerAccounts.Remove(pa);
+                        break;
+                    }
+                }
 
                 Debug.Log("Disconnection, " + recConnectionID);
                 break;
@@ -162,7 +170,7 @@ public class NetworkedServer : MonoBehaviour
                 {
                     gr = gameRooms.First.Value;
                     gr.observerIDs.Add(id);
-                    SendMessageToClient(ServertoClientSignifiers.GameStart + "," + gr.player1ID + "," + gr.player2ID + "," + gr.startingPlayer, id);
+                    SendMessageToClient(ServertoClientSignifiers.GameStart + "," + gr.player1ID + "," + gr.player2ID + "," + gr.startingPlayer + "," + id, id);
                 }
                 break;
             case ClientToServerSignifiers.LeaveRoom:
@@ -200,8 +208,8 @@ public class NetworkedServer : MonoBehaviour
             }
 
             gameRooms.AddLast(gr);
-            SendMessageToClient(ServertoClientSignifiers.GameStart + "," + gr.player1ID + "," + gr.player2ID + "," + gr.startingPlayer, gr.player1ID);
-            SendMessageToClient(ServertoClientSignifiers.GameStart + "," + gr.player2ID + "," + gr.player1ID + "," + gr.startingPlayer, gr.player2ID);
+            SendMessageToClient(ServertoClientSignifiers.GameStart + "," + gr.player1ID + "," + gr.player2ID + "," + gr.startingPlayer + "," + id, gr.player1ID);
+            SendMessageToClient(ServertoClientSignifiers.GameStart + "," + gr.player2ID + "," + gr.player1ID + "," + gr.startingPlayer + "," + id, gr.player2ID);
             playerWaitinginQueueID = -1;
         }
     }
@@ -289,6 +297,11 @@ public class NetworkedServer : MonoBehaviour
         {
             if (gr.player1ID == id || gr.player2ID == id)
                 return gr;
+            foreach(int obs in gr.observerIDs)
+            {
+                if (obs == id)
+                    return gr;
+            }
         }
 
         return null;
@@ -319,7 +332,11 @@ public class GameRoom
     {
         player1ID = Player1ID;
         player2ID = Player2ID;
-        startingPlayer = Random.Range(1, 3);
+        int temp = Random.Range(1, 3);
+        if (temp == 1)
+            startingPlayer = player1ID;
+        else
+            startingPlayer = player2ID;
 
         observerIDs = new List<int>();
         playerAccounts = new List<PlayerAccount>();
