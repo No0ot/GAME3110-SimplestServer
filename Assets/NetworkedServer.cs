@@ -171,6 +171,17 @@ public class NetworkedServer : MonoBehaviour
                     gr = gameRooms.First.Value;
                     gr.observerIDs.Add(id);
                     SendMessageToClient(ServertoClientSignifiers.GameStart + "," + gr.player1ID + "," + gr.player2ID + "," + gr.startingPlayer + "," + id, id);
+                    if (gr.turnNum > 0)
+                    {
+                        string[] temp = gr.LoadReplay();
+                        foreach(string action in temp)
+                        {
+                            string[] line = action.Split(',');
+                            if(line[0] != null)
+                                SendMessageToClient(ServertoClientSignifiers.SendReplay + "," + line[0] + "," + line[1] + "," + 1, id);
+                            //SendMessageToClient(ServertoClientSignifiers.SendReplay + "," + line[0] + "," + 1, id);
+                        }
+                    }
                 }
                 break;
             case ClientToServerSignifiers.LeaveRoom:
@@ -184,6 +195,14 @@ public class NetworkedServer : MonoBehaviour
                         SendMessageToClient(ServertoClientSignifiers.BackToMainMenu + "", obs);
                     }
                     gameRooms.Remove(gr);
+                }
+                break;
+            case ClientToServerSignifiers.GetReplay:
+                string[] replay = gr.LoadReplay();
+                foreach (string action in replay)
+                {
+                    string[] line = action.Split(',');
+                    SendMessageToClient(ServertoClientSignifiers.SendReplay + "," + line[0] + "," + line[1] + "," + 0, id);
                 }
                 break;
         }
@@ -220,6 +239,9 @@ public class NetworkedServer : MonoBehaviour
         string slot = csv[1];
         if (gr != null)
         {
+            gr.turnNum++;
+            gr.SaveReplay(csv);
+
             SendMessageToClient(ServertoClientSignifiers.OpponentPlay + "," + slot + "," + csv[2], gr.player2ID);
             SendMessageToClient(ServertoClientSignifiers.OpponentPlay + "," + slot + "," + csv[2], gr.player1ID);
             foreach (int observer in gr.observerIDs)
@@ -327,6 +349,8 @@ public class GameRoom
     public List<int> observerIDs;
     public int startingPlayer;
     public List<PlayerAccount> playerAccounts;
+    public int turnNum;
+    public List<string> replayActions;
 
     public GameRoom(int Player1ID, int Player2ID)
     {
@@ -340,6 +364,8 @@ public class GameRoom
 
         observerIDs = new List<int>();
         playerAccounts = new List<PlayerAccount>();
+        replayActions = new List<string>();
+        turnNum = 0;
     }
 
     public void RemovePlayer(int removedplayerID)
@@ -352,6 +378,39 @@ public class GameRoom
         {
             observerIDs.Remove(removedplayerID);
         }
+    }
+
+    public void SaveReplay(string[] csv)
+    {
+        StreamWriter sw = new StreamWriter(Application.dataPath + Path.DirectorySeparatorChar + "replay.txt");
+        replayActions.Add(csv[1] + "," + csv[2]);
+        foreach (string action in replayActions)
+        {
+            sw.WriteLine(action);
+        }
+        
+        sw.Close();
+    }
+
+    public string[] LoadReplay()
+    {
+        if (File.Exists(Application.dataPath + Path.DirectorySeparatorChar + "replay.txt"))
+        {
+            string[] csv = {"","", "", "", "", "", "", "", "", "" };
+            StreamReader sr = new StreamReader(Application.dataPath + Path.DirectorySeparatorChar + "replay.txt");
+
+            string line;
+            int i = 0;
+            while ((line = sr.ReadLine()) != null)
+            {
+                csv[i] = line;
+                i++;
+            }
+
+            sr.Close();
+            return csv;
+        }
+        return null;
     }
 }
 
@@ -370,6 +429,8 @@ public static class ClientToServerSignifiers
     public const int JoinAsObserver = 6;
 
     public const int LeaveRoom = 7;
+
+    public const int GetReplay = 8;
 }
 
 public static class ServertoClientSignifiers
@@ -389,4 +450,6 @@ public static class ServertoClientSignifiers
     public const int SendChatMessage = 7;
 
     public const int BackToMainMenu = 8;
+
+    public const int SendReplay = 9;
 }
