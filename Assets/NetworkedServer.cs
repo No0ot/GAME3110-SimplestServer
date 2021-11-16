@@ -195,6 +195,7 @@ public class NetworkedServer : MonoBehaviour
                         SendMessageToClient(ServertoClientSignifiers.BackToMainMenu + "", obs);
                     }
                     gameRooms.Remove(gr);
+                    gr = null;
                 }
                 break;
             case ClientToServerSignifiers.GetReplay:
