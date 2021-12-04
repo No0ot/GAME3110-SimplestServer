@@ -203,7 +203,8 @@ public class NetworkedServer : MonoBehaviour
                 foreach (string action in replay)
                 {
                     string[] line = action.Split(',');
-                    SendMessageToClient(ServertoClientSignifiers.SendReplay + "," + line[0] + "," + line[1] + "," + 0, id);
+                    if(line != null)
+                        SendMessageToClient(ServertoClientSignifiers.SendReplay + "," + line[0] + "," + line[1] + "," + 0, id);
                 }
                 break;
         }
@@ -289,10 +290,8 @@ public class NetworkedServer : MonoBehaviour
 
     private void LoadPlayerAccount()
     {
-
         if (File.Exists(playerAccountDataPath))
         {
-
             StreamReader sr = new StreamReader(playerAccountDataPath);
 
             string line;
@@ -326,10 +325,8 @@ public class NetworkedServer : MonoBehaviour
                     return gr;
             }
         }
-
         return null;
     }
-
 }
 
 public class PlayerAccount
@@ -397,7 +394,7 @@ public class GameRoom
     {
         if (File.Exists(Application.dataPath + Path.DirectorySeparatorChar + "replay.txt"))
         {
-            string[] csv = {"","", "", "", "", "", "", "", "", "" };
+            string[] csv = { "", "", "", "", "", "", "", "", "", "" };
             StreamReader sr = new StreamReader(Application.dataPath + Path.DirectorySeparatorChar + "replay.txt");
 
             string line;
